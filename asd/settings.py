@@ -6,3 +6,5 @@ class SettingsScreen(QWidget):
         super().__init__()
         self.stacked_widget = stacked_widget
         loadUi('settings.ui',self)
+
+        self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))

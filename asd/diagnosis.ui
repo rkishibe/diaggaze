@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>760</width>
+    <height>551</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,7 +26,7 @@
     <string>Diagnose a patient</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="lineEdit">
+  <widget class="QLineEdit" name="search_bar">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -78,10 +78,10 @@
   <widget class="QTableWidget" name="table_widget">
    <property name="geometry">
     <rect>
-     <x>270</x>
-     <y>90</y>
-     <width>141</width>
-     <height>381</height>
+     <x>510</x>
+     <y>110</y>
+     <width>191</width>
+     <height>341</height>
     </rect>
    </property>
   </widget>

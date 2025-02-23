@@ -40,6 +40,8 @@ class DiagnosisScreen(QWidget):
         # Main layout
         layout = QVBoxLayout(self)
 
+        self.search_bar.textChanged.connect(self.filter_images)
+
         self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
         # Table to display image names
@@ -62,11 +64,12 @@ class DiagnosisScreen(QWidget):
             return
 
         # Get list of image files
-        image_files = [f for f in os.listdir(image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
-        self.table_widget.setRowCount(len(image_files))
+        self.image_files = [f for f in os.listdir(image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
+        # self.table_widget.setRowCount(len(self.image_files))
 
-        for row, image_name in enumerate(image_files):
-            self.table_widget.setItem(row, 0, QTableWidgetItem(image_name))
+        # for row, image_name in enumerate(self.image_files):
+        #     self.table_widget.setItem(row, 0, QTableWidgetItem(image_name))
+        self.populate_table(self.image_files)
 
     def open_image_popup(self, row, column):
         """Opens a popup to display the selected image."""
@@ -76,15 +79,28 @@ class DiagnosisScreen(QWidget):
         # Show image in a popup
         self.image_popup = ImagePopup(image_path)
         self.image_popup.exec_()
+    
+    def populate_table(self, image_list):
+        """Fills the table with provided image names."""
+        self.table_widget.setRowCount(len(image_list))
+        for row, image_name in enumerate(image_list):
+            self.table_widget.setItem(row, 0, QTableWidgetItem(image_name))
+
+    def filter_images(self):
+        """Filters images based on search query."""
+        query = self.search_bar.text().lower()
+        filtered_images = [img for img in self.image_files if query in img.lower()]
+        self.populate_table(filtered_images)
+
 
 class ImageDropLabel(QLabel):
-    def __init__(self, model):
+    def __init__(self, model, height=200, width=150):
         super().__init__()
         self.setText("Drag and Drop an Image Here")
         self.setAlignment(Qt.AlignCenter)
-        self.setMinimumSize(100, 100)
-        self.move(200,200)
-        self.setStyleSheet("border: 2px dashed #aaa; font-size: 16px; padding: 20px;")
+        self.setMaximumSize(width, height)
+        #self.move(600,200)
+        self.setStyleSheet("border: 1px dashed #aaa; font-size: 16px; padding: 20px;")
         self.setAcceptDrops(True)
         self.model = model  # Load the ML model
 

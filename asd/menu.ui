@@ -16,43 +16,17 @@
   <widget class="QWidget" name="widget" native="true">
    <property name="geometry">
     <rect>
-     <x>290</x>
-     <y>50</y>
-     <width>221</width>
-     <height>181</height>
+     <x>260</x>
+     <y>30</y>
+     <width>251</width>
+     <height>231</height>
     </rect>
    </property>
-   <widget class="QRadioButton" name="radioButton">
+   <widget class="QDoubleSpinBox" name="age_input">
     <property name="geometry">
      <rect>
       <x>90</x>
-      <y>80</y>
-      <width>51</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>M</string>
-    </property>
-   </widget>
-   <widget class="QRadioButton" name="radioButton_2">
-    <property name="geometry">
-     <rect>
-      <x>160</x>
-      <y>80</y>
-      <width>51</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>F</string>
-    </property>
-   </widget>
-   <widget class="QDoubleSpinBox" name="doubleSpinBox">
-    <property name="geometry">
-     <rect>
-      <x>120</x>
-      <y>110</y>
+      <y>120</y>
       <width>62</width>
       <height>25</height>
      </rect>
@@ -71,33 +45,20 @@
      <string>Age</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="add_details">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>150</y>
-      <width>101</width>
-      <height>24</height>
+      <x>60</x>
+      <y>200</y>
+      <width>121</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
      <string>Add all details</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_2">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>80</y>
-      <width>49</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Gender</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="lineEdit">
+   <widget class="QLineEdit" name="name_input">
     <property name="geometry">
      <rect>
       <x>90</x>
@@ -120,33 +81,69 @@
      <string>Name</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_4">
+   <widget class="QLabel" name="quick_add">
     <property name="geometry">
      <rect>
-      <x>70</x>
+      <x>60</x>
       <y>10</y>
-      <width>71</width>
+      <width>141</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>Quick add</string>
+     <string>Quick add consultation</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="add_consultation">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>160</y>
+      <width>121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Add</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="phone_input">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>90</y>
+      <width>113</width>
+      <height>24</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_4">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>90</y>
+      <width>49</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Phone</string>
     </property>
    </widget>
   </widget>
   <widget class="QWidget" name="widget_2" native="true">
    <property name="geometry">
     <rect>
-     <x>540</x>
-     <y>50</y>
-     <width>211</width>
-     <height>181</height>
+     <x>530</x>
+     <y>30</y>
+     <width>231</width>
+     <height>231</height>
     </rect>
    </property>
-   <widget class="QLabel" name="label_5">
+   <widget class="QLabel" name="quick_diagnose">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>60</x>
       <y>10</y>
       <width>101</width>
       <height>16</height>
@@ -154,6 +151,127 @@
     </property>
     <property name="text">
      <string>Quick diagnose</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="diagnose">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>200</y>
+      <width>101</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Diagnose</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="widget_3" native="true">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>270</y>
+     <width>251</width>
+     <height>231</height>
+    </rect>
+   </property>
+   <widget class="QLabel" name="consultations">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>10</y>
+      <width>151</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Upcoming consultation</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="patient_history">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>190</y>
+      <width>161</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>View patient history</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="consultation_label">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>60</y>
+      <width>191</width>
+      <height>81</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="widget_4" native="true">
+   <property name="geometry">
+    <rect>
+     <x>540</x>
+     <y>270</y>
+     <width>221</width>
+     <height>231</height>
+    </rect>
+   </property>
+   <widget class="QLabel" name="patient_details">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>10</y>
+      <width>141</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Search patient details</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="id_search">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>50</y>
+      <width>131</width>
+      <height>24</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="contact_information">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>80</y>
+      <width>131</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="search_button">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>190</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Search</string>
     </property>
    </widget>
   </widget>
