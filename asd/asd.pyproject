@@ -1,0 +1,18 @@
+{
+    "files": [
+        "app.py",
+        "form.ui",
+        "form.py",
+        "details.py",
+        "login.py",
+        "db_view.py",
+        "login.ui",
+        "app.ui",
+        "db_view.ui",
+        "menu.ui",
+        "diagnosis.ui",
+        "welcome.ui",
+        "signup.ui",
+        "settings.ui"
+    ]
+}

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow {
+    background-color: #F7F8FA;
+}
+
+QPushButton {
+    background-color: #4A90E2;
+    color: white;
+    border: 1px solid #4A90E2;
+    border-radius: 5px;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
+<!-- QPushButton:hover {
+    background-color: #50C8C6;
+} -->
+
+QLineEdit {
+    background-color: white;
+    border: 1px solid #B3E5FC;
+    border-radius: 5px;
+    padding: 5px;
+    font-size: 14px;
+}
+
+QLabel {
+    color: #4A4A4A;
+    font-size: 14px;
+}
+
+QMessageBox {
+    background-color: #FAFAFA;
+    color: #4A4A4A;
+    font-size: 14px;
+}
+
+QMessageBox[success=true] {
+    background-color: #2ECC71;
+    color: white;
+}
+
+QMessageBox[error=true] {
+    background-color: #E57373;
+    color: white;
+}
+
+QGroupBox{
+    border: none;
+}
+
+QListWidget {
+    background-color: rgb(227, 229, 232); /* Light background */
+    font-size: 18px;
+    border: none;
+    padding: 10px;
+    outline: 0;  /* Removes focus outline */
+}
+
+QListWidget::item {
+    padding: 15px;
+    height: 40px;
+    border-radius: 5px;
+}
+
+/* Hover Effect */
+QListWidget::item:hover {
+    background-color: rgb(190, 205, 221);
+    padding-left: 20px;  /* Adds slight movement effect */
+    font-weight: 600;  /* Make text slightly bolder */
+}
+
+/* Selected Item */
+QListWidget::item:selected {
+    background-color: #1ABC9C;  /* Green highlight */
+    font-weight: bold;
+    color: white;
+    padding-left: 25px;  /* More movement for selection */
+}
+
+/* Add shadow effect on hover */
+QListWidget::item:hover {
+    background-color: rgb(190, 205, 221);
+}
+
+
+</string>
+  </property>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
