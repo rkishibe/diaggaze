@@ -29,11 +29,11 @@ class DatabaseScreen(QWidget):
         # Connect to MongoDB
         client = MongoClient("mongodb://localhost:27017/")  # Update with your MongoDB URI
         db = client["Patients"]  # Replace with your database name
-        collection = db["ASD"]  # Replace with your collection name
+        collection = db["patients"]  # Replace with your collection name
 
         # Fetch data from MongoDB
         fields_to_display = ["Participant ID", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]
-        fields = ["ParticipantID", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]  # Specify the desired fields
+        fields = ["ParticipantID","Name", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]  # Specify the desired fields
         documents = list(collection.find({}, {field: 1 for field in fields}))
 
         if documents:

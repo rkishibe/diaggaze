@@ -13,6 +13,7 @@
         "diagnosis.ui",
         "welcome.ui",
         "signup.ui",
-        "settings.ui"
+        "settings.ui",
+        "patient_history.ui"
     ]
 }

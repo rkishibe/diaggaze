@@ -5,7 +5,6 @@ from PyQt5.QtGui import QIcon, QPalette, QColor, QStandardItem, QStandardItemMod
 from PyQt5.QtCore import QDate, QSortFilterProxyModel, Qt
 from PyQt5.uic import loadUi
 from pymongo import MongoClient
-import tensorflow as tf
 
 from signup import SignupScreen
 from welcome import WelcomeScreen
@@ -16,6 +15,9 @@ from db_view import DatabaseScreen
 from diagnosis import DiagnosisScreen, ImageDropLabel
 from hover_effect import HoverEffectFilter
 from settings import SettingsScreen
+from patient_history import PatientHistoryScreen
+
+from utils import get_next_participant_id
 
 #model = tf.keras.models.load_model("model.h5") #load ml model
 model=0
@@ -40,19 +42,21 @@ class MenuScreen(QWidget):
         self.nav_list.addItem(self.menu_label)
 
         # Other menu items
-        home_item = QListWidgetItem(QIcon("icons/home.png"), " Home")
-        profile_item = QListWidgetItem(QIcon("icons/profile.png"), " Profile")
+        #home_item = QListWidgetItem(QIcon("icons/home.png"), " Home")
+        db_item = QListWidgetItem(QIcon("icons/db.png"), " Database")
+        profile_item = QListWidgetItem(QIcon("icons/profile.png"), " Add Patient")
         settings_item = QListWidgetItem(QIcon("icons/settings.png"), " Settings")
         logout_item = QListWidgetItem(QIcon("icons/logout.png"), " Logout")
 
-        self.nav_list.addItem(home_item)
+        self.nav_list.addItem(db_item)
         self.nav_list.addItem(profile_item)
         self.nav_list.addItem(settings_item)
         self.nav_list.addItem(logout_item)
 
-        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(0) if self.nav_list.row(item) == 2 else None) #profile
+        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(4) if self.nav_list.row(item) == 1 else None)
+        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(3) if self.nav_list.row(item) == 2 else None) #profile
         self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(7) if self.nav_list.row(item) == 3 else None) #settings
-        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(0) if self.nav_list.row(item) == 4 else None) #log out
+        self.nav_list.itemClicked.connect(lambda item: self.logout() if self.nav_list.row(item) == 4 else None) #log out
 
         self.dashboard_layout = QGridLayout()
         self.cards = []
@@ -60,8 +64,8 @@ class MenuScreen(QWidget):
         card1 = self.create_dashboard_card(self.quick_add, self.widget)
         self.dashboard_layout.addWidget(card1, 0 // 2, 0 % 2)
         self.cards.append(card1)
-        self.add_consultation.clicked.connect(self.add_patient_consultation)
-        self.add_details.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
+        self.add_consultation_button.clicked.connect(lambda: self.add_consultation())
+        self.add_details.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
         card1.setObjectName("card")
         card1.setStyleSheet("""
             #card {
@@ -98,8 +102,9 @@ class MenuScreen(QWidget):
                 border-radius: 5px;  /* Optional: rounded corners */
             }
         """)
-        self.load_data(filter_today=True)
-        #self.patient_history.clicked.connect() #patient history page
+        self.load_consultations(layout=main_layout, filter_today=True)
+        #self.patient_history.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(8)) #patient history page
+        self.patient_history.clicked.connect(self.show_patient_history)
 
         card4 = self.create_dashboard_card(self.patient_details, self.widget_4)
         self.dashboard_layout.addWidget(card4, 3 // 2, 3 % 2)
@@ -112,9 +117,7 @@ class MenuScreen(QWidget):
         """)
         self.cards.append(card4)
 
-        id = self.id_search.text()
-        self.search_button.clicked.connect(lambda:self.search_patient_by_id(id))
-        
+        self.search_button.clicked.connect(lambda: self.search_patient_by_id(patient_id=self.id_search.value()))
 
         main_layout.addWidget(self.nav_list, 1)  # Sidebar takes 1/4 of space
         main_layout.addLayout(self.dashboard_layout, 3)  # Dashboard takes 3/4
@@ -139,42 +142,67 @@ class MenuScreen(QWidget):
             card.setMinimumSize(window_width // 5, window_height // 6)  # Dynamic resizing
         super().resizeEvent(event)
 
-    def load_data(self, filter_today=False):
+    def load_consultations(self, layout, filter_today=False):
         """ Fetch the Name, Phone of patients for today's date and display them as QLabel. """
         client = MongoClient("mongodb://localhost:27017/")  
         db = client["Patients"]  
-        collection = db["upcoming"]  
+        collection = db["consultations"]  
 
         if filter_today:
-            today_date = QDate.currentDate().toString(Qt.ISODate)  # Today's date in YYYY-MM-DD format
+            today_date = QDate.currentDate().toString(Qt.ISODate)  
+
             documents = list(collection.find(
-                {"Date of Presentation": today_date},  # Filter by today's date
-                {"Name": 1, "Phone": 1, "_id": 0}  # Fetch only Name and Phone
+                {"Date of Consult": today_date},  # Filter by today's date
+                {"Name": 1, "Phone": 1, "Consultation Type":1, "ParticipantID":1, "_id": 0}  # Fetch only Name and Phone
             ))
         else:
-            documents = list(collection.find({}, {"Name": 1, "Phone": 1, "_id": 0}))
+            documents = list(collection.find({}, {"Name": 1, "Phone": 1, "Consultation Type":1, "_id": 0}))
 
         if not documents:
-            self.layout.addWidget(self.consultation_label.setText("No appointments for today."))
+            layout.addWidget(self.consultation_label.setText("No appointments for today."))
             return
-
-        # Clear existing labels before adding new ones
-        # for i in reversed(range(self.layout.count())):
-        #     widget = self.layout.itemAt(i).widget()
-        #     if widget:
-        #         widget.setParent(None)
 
         # Add QLabel for each patient
         for doc in documents:
             name = doc.get("Name", "").strip()
             phone = doc.get("Phone", "").strip()
+            consult = doc.get("Consultation Type", "").strip()
+            id= doc.get("ParticipantID", 0)
 
             if name or phone:  # Only add if both fields are not empty
-                self.consultation_label.setText(f"Name: {name} \nPhone: {phone} \nConsultation type: \n")
+                self.consultation_label.setText(f"Name: {name} \nPhone: {phone} \nConsultation type: {consult}\n")
+
+        #return id
     
+    def search_patient_by_id(self,patient_id):
+        """
+        Searches for a patient by their ParticipantID in the 'upcoming' collection.
+
+        :param patient_id: The ID of the patient to search for.
+        :return: A dictionary containing the patient's details if found, else None.
+        """
+        #from app import MenuScreen
+
+        client = MongoClient("mongodb://localhost:27017/")  # Connect to MongoDB
+        db = client["Patients"]  # Database name
+        collection = db["patients"]  # Collection name
+
+        # Search for the patient by ID
+        patient = collection.find_one({'ParticipantID': patient_id}, {"_id": 0})  # Exclude MongoDB's _id field
+
+        name = patient.get("Name", "").strip()
+        phone = patient.get("Phone", "").strip()
+        diagnosis = patient.get("Class", "").strip()
+
+        if patient:
+            self.contact_information.setText(f"Name: {name} \nAge: {phone} \nDiagnosis: {diagnosis}")
+        else:
+            self.contact_information.setText("No patient found")
     
-    def add_patient_consultation(self):
+    def add_consultation(self):
         """Collect data from the form and add it to the MongoDB database."""
+        
+        # Validation
         if not self.name_input.text().strip():
             QMessageBox.warning(self, "Validation Error", "Please enter your name.")
             return
@@ -183,35 +211,47 @@ class MenuScreen(QWidget):
             QMessageBox.warning(self, "Validation Error", "Please enter a valid age.")
             return
 
-
         # Get the data from the form fields
-        participant_id = str(uuid.uuid4())
-        name = self.name_input.text()
-        phone = self.phone_input.text()
+        name = self.name_input.text().strip()
+        phone = self.phone_input.text().strip()
         age = self.age_input.value()
         date = QDate.currentDate().toString(Qt.ISODate)
-        
-
-        # Prepare the data as a dictionary for MongoDB
-        form_data = {
-            "Participant ID": participant_id,
-            "Name": name,
-            "Phone": phone,
-            "Age": age,
-            "Date of Presentation": date,
-        }
 
         try:
             # Connect to MongoDB
-            client = MongoClient("mongodb://localhost:27017/")  # Replace with your MongoDB URI
-            db = client["Patients"]  # Replace with your database name
-            collection = db["upcoming"]  # Replace with your collection name
+            client = MongoClient("mongodb://localhost:27017/")
+            db = client["Patients"]
+            collection_patient = db["patients"]  # Patients collection
+            collection_consult = db["consultations"]  # Consultations collection
 
-            # Insert the data into the collection
-            collection.insert_one(form_data)
+            # Check if the patient exists
+            patient = collection_patient.find_one({"Name": name})
 
-            # Show a success message
-            QMessageBox.information(self, "Form Submitted", "Your form has been submitted successfully!")
+            if patient:
+                # Patient exists: use existing ID
+                participant_id = patient["ParticipantID"]
+            else:
+                # New patient: generate new ID and add to the database
+                participant_id = get_next_participant_id()
+                new_patient = {
+                    "ParticipantID": participant_id,
+                    "Name": name,
+                    "Phone": phone,
+                    "Age": age
+                }
+                collection_patient.insert_one(new_patient)
+
+            # Add a new consultation record
+            consultation_data = {
+                "ParticipantID": participant_id,
+                "Name": name,
+                "Phone": phone,
+                "Date of Consult": date
+            }
+            collection_consult.insert_one(consultation_data)
+
+            # Show success message
+            QMessageBox.information(self, "Form Submitted", "Your consultation has been recorded successfully!")
 
             # Clear the form fields (optional)
             self.name_input.clear()
@@ -221,24 +261,51 @@ class MenuScreen(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred: {str(e)}")
 
-    def search_patient_by_id(self,patient_id):
-        """
-        Searches for a patient by their ParticipantID in the 'upcoming' collection.
+    def get_selected_patient_id(self):
+        """ Fetch the Name, Phone of patients for today's date and display them as QLabel. """
+        client = MongoClient("mongodb://localhost:27017/")  
+        db = client["Patients"]  
+        collection = db["consultations"]  
 
-        :param patient_id: The ID of the patient to search for.
-        :return: A dictionary containing the patient's details if found, else None.
-        """
-        client = MongoClient("mongodb://localhost:27017/")  # Connect to MongoDB
-        db = client["Patients"]  # Database name
-        collection = db["upcoming"]  # Collection name
+        today_date = QDate.currentDate().toString(Qt.ISODate)
 
-        # Search for the patient by ID
-        patient = collection.find_one({"ParticipantID": patient_id}, {"_id": 0})  # Exclude MongoDB's _id field
+        documents = collection.find_one(
+                {"Date of Consult": today_date},  # Filter by today's date
+                {"ParticipantID": 1, "_id": 0}  # Fetch only Name and Phone
+            )
 
-        if patient:
-            self.contact_information.setText(f"Name: {patient.name} \nPhone: {patient.phone}")
+        if documents:
+            return documents.get("ParticipantID", "")
         else:
-            self.contact_information.setText("No patient found")
+            return 0
+
+    def show_patient_history(self):
+        """
+        Retrieves the selected patient's ID, fetches their details and consultations,
+        updates the QLabel, and switches to the patient history screen.
+        """
+        patient_id = self.get_selected_patient_id()
+
+        #patient_id = self.load_consultations(filter_today=True)
+
+        patient_history_screen = self.stacked_widget.widget(8)  # Index 8 is the PatientHistoryScreen
+        
+        if isinstance(patient_history_screen, PatientHistoryScreen):
+            patient_history_screen.display_patient_info(patient_id)  # Load patient history
+            
+            # Switch to the Patient History screen
+            self.stacked_widget.setCurrentIndex(8)
+        else:
+            QMessageBox.warning(self, "Error", "Unable to load patient history screen.")
+
+    def logout(self):
+        """Handles user logout and closes the database connection."""
+        if hasattr(self, 'client'):
+            self.client.close()  # Close the MongoDB connection
+            print("MongoDB connection closed.")
+
+        self.stacked_widget.setCurrentIndex(0)  # Redirect to login screen
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -261,6 +328,7 @@ class MainWindow(QMainWindow):
         self.welcome_screen = WelcomeScreen(self.stacked_widget)
         self.signup_screen = SignupScreen(self.stacked_widget)
         self.settings_screen = SettingsScreen(self.stacked_widget)
+        self.patient_history_screen = PatientHistoryScreen(self.stacked_widget)
 
         # Add screens to stack
         self.stacked_widget.addWidget(self.login_screen)  # Index 0
@@ -271,6 +339,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.diagnosis_screen)
         self.stacked_widget.addWidget(self.welcome_screen) # Index 6
         self.stacked_widget.addWidget(self.settings_screen) 
+        self.stacked_widget.addWidget(self.patient_history_screen) 
 
         # Start with the welcome screen
         self.stacked_widget.setCurrentIndex(6)

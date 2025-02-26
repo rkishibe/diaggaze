@@ -4,6 +4,8 @@ from PyQt5.QtCore import QDate, Qt
 from PyQt5.uic import loadUi
 import uuid
 
+from utils import get_next_participant_id
+
 class FormScreen(QWidget):
     def __init__(self, stacked_widget):
         super().__init__()
@@ -19,6 +21,10 @@ class FormScreen(QWidget):
         self.diagnosis_group = QButtonGroup(self)
         self.diagnosis_group.addButton(self.TC_button)
         self.diagnosis_group.addButton(self.TS_button)
+
+        self.consult_group = QButtonGroup(self)
+        self.consult_group.addButton(self.routine_Radiobutton)
+        self.consult_group.addButton(self.asess_Radiobutton)
 
         # Connect buttons to actions
         self.submit_button.clicked.connect(self.submit_form)  # Connect to the submit function
@@ -39,7 +45,7 @@ class FormScreen(QWidget):
             return
 
         # Get the data from the form fields
-        participant_id = str(uuid.uuid4())
+        participant_id = get_next_participant_id()
         name = self.name_input.text()
         age = self.age_input.value()
         gender = "Male" if self.male_radio.isChecked() else "Female"
@@ -53,9 +59,30 @@ class FormScreen(QWidget):
         
         cars_score = self.cars_score.value()
 
+        consultation_id= str(uuid.uuid4())
+        phone = self.phone_input.text()
+
+        if self.routine_Radiobutton.isChecked():
+            consult_type = "routine"
+        elif self.asess_Radiobutton.isChecked():
+            consult_type = "assesment"
+        else:
+            consult_type = ""
+        
+        treatment = self.treatment_input.text()
+
+        consultation_form_data = {
+            "Consultation ID": consultation_id,
+            "ParticipantID": participant_id,
+            "Phone": phone,
+            "Consultation Type": consult_type,
+            "Treatment": treatment,
+            "Date of Consult": date,
+        }
+
         # Prepare the data as a dictionary for MongoDB
-        form_data = {
-            "Participant ID": participant_id,
+        patient_form_data = {
+            "ParticipantID": participant_id,
             "Name": name,
             "Age": age,
             "Gender": gender,
@@ -68,10 +95,12 @@ class FormScreen(QWidget):
             # Connect to MongoDB
             client = MongoClient("mongodb://localhost:27017/")  # Replace with your MongoDB URI
             db = client["Patients"]  # Replace with your database name
-            collection = db["test"]  # Replace with your collection name
+            patients_collection = db["patients"]  # Replace with your collection name
+            consult_collection= db["consultations"]
 
             # Insert the data into the collection
-            collection.insert_one(form_data)
+            patients_collection.insert_one(patient_form_data)
+            consult_collection.insert_one(consultation_form_data)
 
             # Show a success message
             QMessageBox.information(self, "Form Submitted", "Your form has been submitted successfully!")
@@ -84,6 +113,11 @@ class FormScreen(QWidget):
             self.TC_button.setChecked(False)
             self.TS_button.setChecked(False)
             self.cars_score.clear()
+
+            self.phone_input.clear()
+            self.routine_Radiobutton.setChecked(False)
+            self.asess_Radiobutton.setChecked(False)
+            self.treatment_input.clear()
 
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred: {str(e)}")
