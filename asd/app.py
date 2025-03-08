@@ -1,8 +1,8 @@
 import sys
 import uuid
-from PyQt5.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QStackedWidget, QWidget, QVBoxLayout
-from PyQt5.QtGui import QIcon, QPalette, QColor, QStandardItem, QStandardItemModel
-from PyQt5.QtCore import QDate, QSortFilterProxyModel, Qt
+from PyQt5.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QStackedWidget, QWidget, QVBoxLayout
+from PyQt5.QtGui import QIcon, QPalette, QColor
+from PyQt5.QtCore import QDate, Qt
 from PyQt5.uic import loadUi
 from pymongo import MongoClient
 
@@ -17,11 +17,15 @@ from hover_effect import HoverEffectFilter
 from settings import SettingsScreen
 from patient_history import PatientHistoryScreen
 
-from utils import get_next_participant_id
+from utils import get_next_participant_id, cipher
 
 #model = tf.keras.models.load_model("model.h5") #load ml model
 model=0
 USERNAME=""
+
+# Load the key
+#secret_key = load_key()
+#cipher = load_cipher()
 
 class MenuScreen(QWidget):
     def __init__(self, stacked_widget):
@@ -143,7 +147,7 @@ class MenuScreen(QWidget):
         super().resizeEvent(event)
 
     def load_consultations(self, layout, filter_today=False):
-        """ Fetch the Name, Phone of patients for today's date and display them as QLabel. """
+        """Fetch and decrypt the Name, Phone of patients for today's date and display them as QLabel."""
         client = MongoClient("mongodb://localhost:27017/")  
         db = client["Patients"]  
         collection = db["consultations"]  
@@ -152,55 +156,48 @@ class MenuScreen(QWidget):
             today_date = QDate.currentDate().toString(Qt.ISODate)  
 
             documents = list(collection.find(
-                {"Date of Consult": today_date},  # Filter by today's date
-                {"Name": 1, "Phone": 1, "Consultation Type":1, "ParticipantID":1, "_id": 0}  # Fetch only Name and Phone
+                {"Date of Consult": today_date},  
+                {"Name": 1, "Phone": 1, "Consultation Type": 1, "ParticipantID": 1, "_id": 0}  
             ))
         else:
-            documents = list(collection.find({}, {"Name": 1, "Phone": 1, "Consultation Type":1, "_id": 0}))
+            documents = list(collection.find({}, {"Name": 1, "Phone": 1, "Consultation Type": 1, "_id": 0}))
 
         if not documents:
             layout.addWidget(self.consultation_label.setText("No appointments for today."))
             return
 
-        # Add QLabel for each patient
         for doc in documents:
-            name = doc.get("Name", "").strip()
-            phone = doc.get("Phone", "").strip()
-            consult = doc.get("Consultation Type", "").strip()
-            id= doc.get("ParticipantID", 0)
+            name = cipher.decrypt(doc.get("Name", "").encode()).decode().strip()
+            phone = cipher.decrypt(doc.get("Phone", "").encode()).decode().strip()
+            consult = cipher.decrypt(doc.get("Consultation Type", "").encode()).decode().strip()
+            participant_id = doc.get("ParticipantID", 0)
 
-            if name or phone:  # Only add if both fields are not empty
+            if name or phone:  
                 self.consultation_label.setText(f"Name: {name} \nPhone: {phone} \nConsultation type: {consult}\n")
 
-        #return id
     
-    def search_patient_by_id(self,patient_id):
+    def search_patient_by_id(self, patient_id):
         """
-        Searches for a patient by their ParticipantID in the 'upcoming' collection.
-
-        :param patient_id: The ID of the patient to search for.
-        :return: A dictionary containing the patient's details if found, else None.
+        Searches for a patient by their ParticipantID in the 'patients' collection.
         """
-        #from app import MenuScreen
+        client = MongoClient("mongodb://localhost:27017/")  
+        db = client["Patients"]  
+        collection = db["patients"]  
 
-        client = MongoClient("mongodb://localhost:27017/")  # Connect to MongoDB
-        db = client["Patients"]  # Database name
-        collection = db["patients"]  # Collection name
-
-        # Search for the patient by ID
-        patient = collection.find_one({'ParticipantID': patient_id}, {"_id": 0})  # Exclude MongoDB's _id field
-
-        name = patient.get("Name", "").strip()
-        phone = patient.get("Phone", "").strip()
-        diagnosis = patient.get("Class", "").strip()
+        patient = collection.find_one({'ParticipantID': patient_id}, {"_id": 0})  
 
         if patient:
+            name = cipher.decrypt(patient.get("Name", "").encode()).decode().strip()
+            phone = cipher.decrypt(patient.get("Phone", "").encode()).decode().strip()
+            diagnosis = cipher.decrypt(patient.get("Class", "").encode()).decode().strip()
+
             self.contact_information.setText(f"Name: {name} \nAge: {phone} \nDiagnosis: {diagnosis}")
         else:
             self.contact_information.setText("No patient found")
+
     
     def add_consultation(self):
-        """Collect data from the form and add it to the MongoDB database."""
+        """Collect, encrypt, and store patient data in MongoDB."""
         
         # Validation
         if not self.name_input.text().strip():
@@ -211,27 +208,24 @@ class MenuScreen(QWidget):
             QMessageBox.warning(self, "Validation Error", "Please enter a valid age.")
             return
 
-        # Get the data from the form fields
-        name = self.name_input.text().strip()
-        phone = self.phone_input.text().strip()
-        age = self.age_input.value()
+        # Get and encrypt the data from the form fields
+        name = cipher.encrypt(self.name_input.text().strip().encode()).decode()
+        phone = cipher.encrypt(self.phone_input.text().strip().encode()).decode()
+        age = cipher.encrypt(str(self.age_input.value()).encode()).decode()
         date = QDate.currentDate().toString(Qt.ISODate)
 
         try:
-            # Connect to MongoDB
             client = MongoClient("mongodb://localhost:27017/")
             db = client["Patients"]
-            collection_patient = db["patients"]  # Patients collection
-            collection_consult = db["consultations"]  # Consultations collection
+            collection_patient = db["patients"]  
+            collection_consult = db["consultations"]  
 
             # Check if the patient exists
             patient = collection_patient.find_one({"Name": name})
 
             if patient:
-                # Patient exists: use existing ID
                 participant_id = patient["ParticipantID"]
             else:
-                # New patient: generate new ID and add to the database
                 participant_id = get_next_participant_id()
                 new_patient = {
                     "ParticipantID": participant_id,
@@ -250,10 +244,9 @@ class MenuScreen(QWidget):
             }
             collection_consult.insert_one(consultation_data)
 
-            # Show success message
             QMessageBox.information(self, "Form Submitted", "Your consultation has been recorded successfully!")
 
-            # Clear the form fields (optional)
+            # Clear the form fields
             self.name_input.clear()
             self.phone_input.clear()
             self.age_input.setValue(0)
@@ -261,23 +254,25 @@ class MenuScreen(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred: {str(e)}")
 
+
     def get_selected_patient_id(self):
-        """ Fetch the Name, Phone of patients for today's date and display them as QLabel. """
+        """Fetch the first ParticipantID for today's date."""
         client = MongoClient("mongodb://localhost:27017/")  
         db = client["Patients"]  
         collection = db["consultations"]  
 
         today_date = QDate.currentDate().toString(Qt.ISODate)
 
-        documents = collection.find_one(
-                {"Date of Consult": today_date},  # Filter by today's date
-                {"ParticipantID": 1, "_id": 0}  # Fetch only Name and Phone
-            )
+        document = collection.find_one(
+            {"Date of Consult": today_date},  
+            {"ParticipantID": 1, "_id": 0}  
+        )
 
-        if documents:
-            return documents.get("ParticipantID", "")
+        if document:
+            return document.get("ParticipantID", "")
         else:
             return 0
+
 
     def show_patient_history(self):
         """

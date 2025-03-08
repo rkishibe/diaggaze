@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from cryptography.fernet import Fernet
 
 def get_next_participant_id():
     """
@@ -19,5 +20,17 @@ def get_next_participant_id():
         return last_entry["ParticipantID"] + 1  # Increment ID
     else:
         return 1  # If no data exists, start from 1
+    
+# def load_key():
+#     """Loads the encryption key from a file."""
+#     with open("secret.key", "rb") as key_file:
+#         return key_file.read()
 
+def load_cipher():
+    with open("secret.key", "rb") as key_file:
+        secret_key=key_file.read()
+    if secret_key:
+        return Fernet(secret_key)
+    
+cipher = load_cipher()
 

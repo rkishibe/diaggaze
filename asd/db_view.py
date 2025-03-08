@@ -4,6 +4,8 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSortFilterProxyModel
 from pymongo import MongoClient
 
+from utils import cipher
+
 class DatabaseScreen(QWidget):
     def __init__(self,stacked_widget):
         super().__init__()
@@ -26,40 +28,57 @@ class DatabaseScreen(QWidget):
         self.load_data()  # Load all data initially
 
     def load_data(self):
-        # Connect to MongoDB
-        client = MongoClient("mongodb://localhost:27017/")  # Update with your MongoDB URI
-        db = client["Patients"]  # Replace with your database name
-        collection = db["patients"]  # Replace with your collection name
+            """Fetch encrypted data from MongoDB and decrypt it before displaying."""
 
-        # Fetch data from MongoDB
-        fields_to_display = ["Participant ID", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]
-        fields = ["ParticipantID","Name", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]  # Specify the desired fields
-        documents = list(collection.find({}, {field: 1 for field in fields}))
+            # Connect to MongoDB
+            client = MongoClient("mongodb://localhost:27017/")  
+            db = client["Patients"]  
+            collection = db["patients"]  
 
-        if documents:
-            # Create a standard item model
-            model = QStandardItemModel()
-            model.setHorizontalHeaderLabels(fields_to_display)
+            # Fields for display in the table
+            fields_to_display = [ "Name", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]
+            
+            # Fields stored in MongoDB
+            fields = [ "Name", "Gender", "Date of Presentation", "Age", "Class", "CARS Score"]
 
-            # Populate the model with data
-            for doc in documents:
-                row = [QStandardItem(str(doc.get(field, ""))) for field in fields]
-                model.appendRow(row)
+            # Fetch documents
+            documents = list(collection.find({}, {field: 1 for field in fields}))
 
-            self.proxy_model = QSortFilterProxyModel()
-            self.proxy_model.setSourceModel(model)
+            if documents:
+                model = QStandardItemModel()
+                model.setHorizontalHeaderLabels(fields_to_display)
 
-            # Assign the proxy model to the table view
-            self.table_view.setModel(self.proxy_model)
+                for doc in documents:
+                    row_data = []
+                    for field in fields:
+                        value = doc.get(field, "")
 
-            # Enable sorting on the table view
-            self.table_view.setSortingEnabled(True)
+                        # Decrypt encrypted fields only (keep numeric and date fields unchanged)
+                        if field in ["Name", "Gender", "Class"] and isinstance(value, str) and value:
+                            try:
+                                value = cipher.decrypt(value.encode()).decode().strip()
+                            except:
+                                print(f"Decryption failed for field '{field}' in document {doc['_id']}")
 
-            # Optionally, sort by a specific column (e.g., "Age" column at index 3)
-            self.proxy_model.sort(3, Qt.AscendingOrder)
+                        row_data.append(QStandardItem(str(value)))
 
-        else:
-            print("No documents found in the collection.")
+                    model.appendRow(row_data)
+
+                self.proxy_model = QSortFilterProxyModel()
+                self.proxy_model.setSourceModel(model)
+
+                # Assign the proxy model to the table view
+                self.table_view.setModel(self.proxy_model)
+
+                # Enable sorting
+                self.table_view.setSortingEnabled(True)
+
+                # Sort by "Age" column (index 4)
+                self.proxy_model.sort(4, Qt.AscendingOrder)
+
+            else:
+                print("No documents found in the collection.")
+
 
     def search_data(self, text):
         self.proxy_model.setFilterRegExp(text)
