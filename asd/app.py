@@ -1,5 +1,4 @@
 import sys
-import uuid
 from PyQt5.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QStackedWidget, QWidget, QVBoxLayout
 from PyQt5.QtGui import QIcon, QPalette, QColor
 from PyQt5.QtCore import QDate, Qt
@@ -23,15 +22,11 @@ from utils import get_next_participant_id, cipher
 model=0
 USERNAME=""
 
-# Load the key
-#secret_key = load_key()
-#cipher = load_cipher()
-
 class MenuScreen(QWidget):
     def __init__(self, stacked_widget):
         super().__init__()
         self.stacked_widget = stacked_widget
-        self.setMinimumSize(700, 500)  # Prevent window from becoming too small
+        self.setMinimumSize(700, 500)
 
         loadUi('menu.ui', self)
 
@@ -40,31 +35,32 @@ class MenuScreen(QWidget):
         self.nav_list = QListWidget()
         self.nav_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Placeholder for user greeting (will be updated later)
         self.menu_label = QListWidgetItem("Hello, User!")  
-        self.menu_label.setFlags(Qt.ItemIsEnabled)  # Make it non-clickable
+        self.menu_label.setFlags(Qt.ItemIsEnabled)
         self.nav_list.addItem(self.menu_label)
 
-        # Other menu items
-        #home_item = QListWidgetItem(QIcon("icons/home.png"), " Home")
+        #image: Flaticon.com'. This cover has been designed using resources from Flaticon.com
         db_item = QListWidgetItem(QIcon("icons/db.png"), " Database")
         profile_item = QListWidgetItem(QIcon("icons/profile.png"), " Add Patient")
+        diagnose_item = QListWidgetItem(QIcon("icons/diagnose.png"), " Diagnose") 
         settings_item = QListWidgetItem(QIcon("icons/settings.png"), " Settings")
         logout_item = QListWidgetItem(QIcon("icons/logout.png"), " Logout")
 
         self.nav_list.addItem(db_item)
         self.nav_list.addItem(profile_item)
+        self.nav_list.addItem(diagnose_item)
         self.nav_list.addItem(settings_item)
         self.nav_list.addItem(logout_item)
 
         self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(4) if self.nav_list.row(item) == 1 else None)
         self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(3) if self.nav_list.row(item) == 2 else None) #profile
-        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(7) if self.nav_list.row(item) == 3 else None) #settings
-        self.nav_list.itemClicked.connect(lambda item: self.logout() if self.nav_list.row(item) == 4 else None) #log out
+        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(5) if self.nav_list.row(item) == 3 else None)
+        self.nav_list.itemClicked.connect(lambda item: self.stacked_widget.setCurrentIndex(7) if self.nav_list.row(item) == 4 else None) #settings
+        self.nav_list.itemClicked.connect(lambda item: self.logout() if self.nav_list.row(item) == 5 else None) #log out
 
         self.dashboard_layout = QGridLayout()
         self.cards = []
-        #for i, title in enumerate(["Forms", "Database", "Diagnosis"]):
+
         card1 = self.create_dashboard_card(self.quick_add, self.widget)
         self.dashboard_layout.addWidget(card1, 0 // 2, 0 % 2)
         self.cards.append(card1)
@@ -129,17 +125,14 @@ class MenuScreen(QWidget):
         self.setLayout(main_layout)
 
     def update_username(self, username):
-        """ Update the greeting with the logged-in user's name. """
         self.menu_label.setText(f"Hello, {username}!")
 
     def create_dashboard_card(self, title, widget):
-        """ Creates a responsive dashboard card. """
         card= widget
         card.setMinimumSize(150, 100)
         return card
 
     def resizeEvent(self, event):
-        """ Adjusts dashboard card sizes when window resizes """
         window_width = self.width()
         window_height = self.height()
         for card in self.cards:
@@ -147,39 +140,53 @@ class MenuScreen(QWidget):
         super().resizeEvent(event)
 
     def load_consultations(self, layout, filter_today=False):
-        """Fetch and decrypt the Name, Phone of patients for today's date and display them as QLabel."""
-        client = MongoClient("mongodb://localhost:27017/")  
-        db = client["Patients"]  
-        collection = db["consultations"]  
+        try:
+            client = MongoClient("mongodb://localhost:27017/")  
+            db = client["Patients"]  
+            collection = db["consultations"]  
 
-        if filter_today:
-            today_date = QDate.currentDate().toString(Qt.ISODate)  
+            if filter_today:
+                today_date = QDate.currentDate().toString("dd/MM/yyyy")  
 
-            documents = list(collection.find(
-                {"Date of Consult": today_date},  
-                {"Name": 1, "Phone": 1, "Consultation Type": 1, "ParticipantID": 1, "_id": 0}  
-            ))
-        else:
-            documents = list(collection.find({}, {"Name": 1, "Phone": 1, "Consultation Type": 1, "_id": 0}))
+                documents = list(collection.find(
+                    {"Date of Consult": today_date},  
+                    {"Name": 1, "Phone": 1, "Consultation Type": 1, "ParticipantID": 1, "_id": 0}  
+                ))
+            else:
+                documents = list(collection.find({}, {"Name": 1, "Phone": 1, "Consultation Type": 1, "_id": 0}))
 
-        if not documents:
-            layout.addWidget(self.consultation_label.setText("No appointments for today."))
-            return
+            if not documents:
+                layout.addWidget(self.consultation_label.setText("No appointments found."))
+                return
 
-        for doc in documents:
-            name = cipher.decrypt(doc.get("Name", "").encode()).decode().strip()
-            phone = cipher.decrypt(doc.get("Phone", "").encode()).decode().strip()
-            consult = cipher.decrypt(doc.get("Consultation Type", "").encode()).decode().strip()
-            participant_id = doc.get("ParticipantID", 0)
+            # Create a layout to display multiple consultations
+            consultations_text = ""
 
-            if name or phone:  
-                self.consultation_label.setText(f"Name: {name} \nPhone: {phone} \nConsultation type: {consult}\n")
+            for doc in documents:
+                # Decrypt the necessary fields
+                name = doc.get("Name", "")
+                phone = doc.get("Phone", "")
+                consult_type = doc.get("Consultation Type", "")
+                participant_id = doc.get("ParticipantID", 0)
 
-    
+                # Only display entries with valid Name or Phone
+                if name or phone:
+                    consultations_text += f"<b>Name:</b> {name} <br>" \
+                                        f"<b>Phone:</b> {phone} <br>" \
+                                        f"<b>Consultation Type:</b> <br> {consult_type} <br>" \
+                                        f"<b>Participant ID:</b> {participant_id} <br><br>"
+
+            # If there are consultations, display them; otherwise, show no results message
+            if consultations_text:
+                self.consultation_label.setText(consultations_text)
+            else:
+                self.consultation_label.setText("No appointments found.")
+
+        except Exception as e:
+            print(f"Error loading consultations: {str(e)}")
+
+
     def search_patient_by_id(self, patient_id):
-        """
-        Searches for a patient by their ParticipantID in the 'patients' collection.
-        """
         client = MongoClient("mongodb://localhost:27017/")  
         db = client["Patients"]  
         collection = db["patients"]  
@@ -195,11 +202,7 @@ class MenuScreen(QWidget):
         else:
             self.contact_information.setText("No patient found")
 
-    
     def add_consultation(self):
-        """Collect, encrypt, and store patient data in MongoDB."""
-        
-        # Validation
         if not self.name_input.text().strip():
             QMessageBox.warning(self, "Validation Error", "Please enter your name.")
             return
@@ -212,7 +215,7 @@ class MenuScreen(QWidget):
         name = cipher.encrypt(self.name_input.text().strip().encode()).decode()
         phone = cipher.encrypt(self.phone_input.text().strip().encode()).decode()
         age = cipher.encrypt(str(self.age_input.value()).encode()).decode()
-        date = QDate.currentDate().toString(Qt.ISODate)
+        date = QDate.currentDate().toString("dd/MM/yyyy")
 
         try:
             client = MongoClient("mongodb://localhost:27017/")
@@ -254,14 +257,12 @@ class MenuScreen(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred: {str(e)}")
 
-
     def get_selected_patient_id(self):
-        """Fetch the first ParticipantID for today's date."""
         client = MongoClient("mongodb://localhost:27017/")  
         db = client["Patients"]  
         collection = db["consultations"]  
 
-        today_date = QDate.currentDate().toString(Qt.ISODate)
+        today_date = QDate.currentDate().toString("dd/MM/yyyy")
 
         document = collection.find_one(
             {"Date of Consult": today_date},  
@@ -273,28 +274,21 @@ class MenuScreen(QWidget):
         else:
             return 0
 
-
     def show_patient_history(self):
-        """
-        Retrieves the selected patient's ID, fetches their details and consultations,
-        updates the QLabel, and switches to the patient history screen.
-        """
         patient_id = self.get_selected_patient_id()
 
         #patient_id = self.load_consultations(filter_today=True)
 
-        patient_history_screen = self.stacked_widget.widget(8)  # Index 8 is the PatientHistoryScreen
+        patient_history_screen = self.stacked_widget.widget(8)
         
         if isinstance(patient_history_screen, PatientHistoryScreen):
-            patient_history_screen.display_patient_info(patient_id)  # Load patient history
+            patient_history_screen.display_patient_info(patient_id)
             
-            # Switch to the Patient History screen
             self.stacked_widget.setCurrentIndex(8)
         else:
             QMessageBox.warning(self, "Error", "Unable to load patient history screen.")
 
     def logout(self):
-        """Handles user logout and closes the database connection."""
         if hasattr(self, 'client'):
             self.client.close()  # Close the MongoDB connection
             print("MongoDB connection closed.")
@@ -334,12 +328,11 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.diagnosis_screen)
         self.stacked_widget.addWidget(self.welcome_screen) # Index 6
         self.stacked_widget.addWidget(self.settings_screen) 
-        self.stacked_widget.addWidget(self.patient_history_screen) 
+        self.stacked_widget.addWidget(self.patient_history_screen)
+        self.stacked_widget.addWidget(self.signup_screen) 
 
-        # Start with the welcome screen
         self.stacked_widget.setCurrentIndex(6)
 
-        # Connect login signal
         self.login_screen.login_successful.connect(self.on_login_success)
 
     def on_login_success(self, username):

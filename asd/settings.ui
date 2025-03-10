@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>505</width>
-    <height>443</height>
+    <width>700</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,7 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>150</x>
+     <x>280</x>
      <y>20</y>
      <width>101</width>
      <height>51</height>
@@ -29,9 +29,9 @@
   <widget class="QPushButton" name="back_button">
    <property name="geometry">
     <rect>
-     <x>180</x>
-     <y>340</y>
-     <width>91</width>
+     <x>190</x>
+     <y>350</y>
+     <width>121</width>
      <height>51</height>
     </rect>
    </property>
@@ -39,30 +39,70 @@
     <string>Back</string>
    </property>
   </widget>
-  <widget class="QRadioButton" name="radioButton">
+  <widget class="QPushButton" name="apply_button">
    <property name="geometry">
     <rect>
-     <x>100</x>
-     <y>110</y>
-     <width>91</width>
-     <height>22</height>
+     <x>350</x>
+     <y>280</y>
+     <width>121</width>
+     <height>51</height>
     </rect>
    </property>
    <property name="text">
-    <string>Light Mode</string>
+    <string>Apply Settings</string>
    </property>
   </widget>
-  <widget class="QRadioButton" name="radioButton_2">
+  <widget class="QPushButton" name="bg_color_button">
    <property name="geometry">
     <rect>
-     <x>100</x>
+     <x>190</x>
+     <y>280</y>
+     <width>121</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Change 
+ Background</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="close_button">
+   <property name="geometry">
+    <rect>
+     <x>350</x>
+     <y>350</y>
+     <width>121</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Close</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="font_size_label">
+   <property name="geometry">
+    <rect>
+     <x>110</x>
+     <y>110</y>
+     <width>61</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Font Size:</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="dark_mode_checkbox">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
      <y>160</y>
-     <width>91</width>
+     <width>131</width>
      <height>22</height>
     </rect>
    </property>
    <property name="text">
-    <string>Dark Mode</string>
+    <string>Enable Dark Mode</string>
    </property>
   </widget>
  </widget>

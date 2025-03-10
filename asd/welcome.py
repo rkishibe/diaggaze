@@ -15,4 +15,4 @@ class WelcomeScreen(QWidget):
         self.group_box.setAlignment(Qt.AlignVCenter)
 
         self.login_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0)) #login in
-        self.signup_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(7))
+        self.signup_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(9))

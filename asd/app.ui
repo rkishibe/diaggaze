@@ -65,7 +65,7 @@ QGroupBox{
 }
 
 QListWidget {
-    background-color: rgb(227, 229, 232); /* Light background */
+    background-color: #e3e5e8; /* Light background */
     font-size: 16px;
     border: none;
     padding: 10px;
@@ -87,7 +87,6 @@ QListWidget::item:hover {
 
 /* Selected Item */
 QListWidget::item:selected {
-    background-color: #1ABC9C;  /* Green highlight */
     font-weight: bold;
     color: white;
     padding-left: 25px;  /* More movement for selection */

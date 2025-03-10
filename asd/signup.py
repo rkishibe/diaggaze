@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QMessageBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QMessageBox, QLineEdit
 from PyQt5.uic import loadUi
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash
+
+from utils import cipher
 
 class SignupScreen(QWidget):
     def __init__(self, stacked_widget):
@@ -12,6 +13,10 @@ class SignupScreen(QWidget):
 
         # # Connect login button to authentication function
         self.submit_button.clicked.connect(self.signup_form)
+
+        self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+
+        self.password_input.setEchoMode(QLineEdit.Password)  # Hide password characters
 
         # # Set up database connection
         self.client = MongoClient("mongodb://localhost:27017/")
@@ -23,25 +28,25 @@ class SignupScreen(QWidget):
                 QMessageBox.warning(self, "Validation Error", "Please enter your first name.")
                 return
             else:
-                first_name = self.first_name_input.text().strip()
+                first_name = cipher.encrypt(self.first_name_input.text().strip().encode()).decode()
 
             if not self.last_name_input.text().strip():
                 QMessageBox.warning(self, "Validation Error", "Please enter your last name.")
                 return
             else:
-                last_name = self.last_name_input.text().strip()
+                last_name = cipher.encrypt(self.last_name_input.text().strip().encode()).decode()
 
             if not self.email_input.text().strip():
                 QMessageBox.warning(self, "Validation Error", "Please enter your email.")
                 return
             else:
-                email = self.email_input.text().strip()
+                email = cipher.encrypt(self.email_input.text().strip().encode()).decode()
 
             if not self.username_input.text().strip():
                 QMessageBox.warning(self, "Validation Error", "Please enter your email.")
                 return
             else:
-                username = self.username_input.text().strip()
+                username = cipher.encrypt(self.username_input.text().strip().encode()).decode()
             
             if not self.password_input.text().strip():
                 QMessageBox.warning(self, "Validation Error", "Please enter a password.")

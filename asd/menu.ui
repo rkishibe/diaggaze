@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>700</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QWidget" name="widget" native="true">
    <property name="geometry">
     <rect>
-     <x>260</x>
-     <y>30</y>
+     <x>180</x>
+     <y>20</y>
      <width>251</width>
      <height>231</height>
     </rect>
@@ -134,8 +134,8 @@
   <widget class="QWidget" name="widget_2" native="true">
    <property name="geometry">
     <rect>
-     <x>530</x>
-     <y>30</y>
+     <x>450</x>
+     <y>20</y>
      <width>231</width>
      <height>231</height>
     </rect>
@@ -170,8 +170,8 @@
   <widget class="QWidget" name="widget_3" native="true">
    <property name="geometry">
     <rect>
-     <x>260</x>
-     <y>270</y>
+     <x>180</x>
+     <y>260</y>
      <width>251</width>
      <height>231</height>
     </rect>
@@ -208,7 +208,7 @@
       <x>30</x>
       <y>60</y>
       <width>191</width>
-      <height>81</height>
+      <height>101</height>
      </rect>
     </property>
     <property name="text">
@@ -219,9 +219,9 @@
   <widget class="QWidget" name="widget_4" native="true">
    <property name="geometry">
     <rect>
-     <x>540</x>
-     <y>270</y>
-     <width>221</width>
+     <x>450</x>
+     <y>260</y>
+     <width>231</width>
      <height>231</height>
     </rect>
    </property>
@@ -254,7 +254,7 @@
    <widget class="QPushButton" name="search_button">
     <property name="geometry">
      <rect>
-      <x>60</x>
+      <x>70</x>
       <y>190</y>
       <width>91</width>
       <height>31</height>
@@ -267,11 +267,24 @@
    <widget class="QSpinBox" name="id_search">
     <property name="geometry">
      <rect>
-      <x>100</x>
+      <x>130</x>
       <y>50</y>
       <width>51</width>
       <height>31</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="patient_details_2">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>60</y>
+      <width>81</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Patient ID</string>
     </property>
    </widget>
   </widget>

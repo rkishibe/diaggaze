@@ -18,7 +18,7 @@ def encrypt_existing_data():
     collection = db["patients"]
 
     # Fields to encrypt
-    fields_to_encrypt = ["Name", "Gender", "Age", "Class", "CARS Score"]
+    fields_to_encrypt = ["Class", "Gender", "Name", "Phone"]
 
     documents = collection.find()  # Fetch all documents
 

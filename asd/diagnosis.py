@@ -1,16 +1,16 @@
 import os
-from PyQt5.QtWidgets import QWidget, QVBoxLayout,  QTableWidgetItem, QLabel, QMessageBox, QDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
 from PyQt5.uic import loadUi
 
-image_directory = "../../dataset/Images/TCImages"
+TC_IMAGE_DIRECTORY = "../../dataset/Images/TCImages"
+TS_IMAGE_DIRECTORY = "../../dataset/Images/TSImages"
 
 class ImagePopup(QDialog):
     def __init__(self, image_path):
         super().__init__()
         self.setWindowTitle("Image Viewer")
-        self.setGeometry(400, 200, 600, 400)
 
         layout = QVBoxLayout()
 
@@ -21,76 +21,86 @@ class ImagePopup(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to load image: {image_path}")
             self.close()
         else:
-            self.image_label.setPixmap(pixmap.scaled(580, 380, aspectRatioMode=1))  # Resize image
+            self.image_label.setPixmap(pixmap.scaled(640, 480, aspectRatioMode=1))  # Resize image
             layout.addWidget(self.image_label)
 
         self.setLayout(layout)
 
 
 class DiagnosisScreen(QWidget):
+    """Displays two tables with images from TCImages and TSImages directories."""
     def __init__(self, stacked_widget, model):
         super().__init__()
         self.stacked_widget = stacked_widget
-        loadUi('diagnosis.ui',self)
+        loadUi('diagnosis.ui', self)
 
         self.diagnosis_label.setAlignment(Qt.AlignCenter)
         self.diagnosis_label.setStyleSheet("font-size: 20px; font-weight: bold;")
 
+        self.tc_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.ts_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
-        # Main layout
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
 
         self.search_bar.textChanged.connect(self.filter_images)
 
         self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
-        # Table to display image names
-        self.table_widget.setColumnCount(1)
-        self.table_widget.setHorizontalHeaderLabels(["Image Name"])
-        self.table_widget.cellDoubleClicked.connect(self.open_image_popup)
-        #layout.addWidget(self.table_widget)
+        self.setup_table(self.tc_table, "TC Images")
+        self.setup_table(self.ts_table, "TS Images")
 
-        self.image_label = ImageDropLabel(model)
-        
-        layout.addWidget(self.image_label)
+        self.tc_table.cellDoubleClicked.connect(lambda row, col: self.open_image_popup(row, col, TC_IMAGE_DIRECTORY, self.tc_table))
+        self.ts_table.cellDoubleClicked.connect(lambda row, col: self.open_image_popup(row, col, TS_IMAGE_DIRECTORY, self.ts_table))
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
+
         self.load_images()
 
+    def setup_table(self, table, title):
+        """Configures the table settings."""
+        table.setColumnCount(1)
+        #table.setHorizontalHeaderLabels([title])
+        # table.setColumnWidth(0, 300)
+
     def load_images(self):
-        """Loads image names from the directory into the table."""
-        if not os.path.exists(image_directory):
-            QMessageBox.critical(self, "Error", f"Directory not found: {image_directory}")
-            return
+        """Loads images from both directories into tables."""
+        self.tc_images = self.get_image_list(TC_IMAGE_DIRECTORY)
+        self.ts_images = self.get_image_list(TS_IMAGE_DIRECTORY)
 
-        # Get list of image files
-        self.image_files = [f for f in os.listdir(image_directory) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
-        # self.table_widget.setRowCount(len(self.image_files))
+        self.populate_table(self.tc_table, self.tc_images)
+        self.populate_table(self.ts_table, self.ts_images)
 
-        # for row, image_name in enumerate(self.image_files):
-        #     self.table_widget.setItem(row, 0, QTableWidgetItem(image_name))
-        self.populate_table(self.image_files)
 
-    def open_image_popup(self, row, column):
+    def get_image_list(self, directory):
+        """Returns a list of image files from a directory."""
+        if not os.path.exists(directory):
+            QMessageBox.critical(self, "Error", f"Directory not found: {directory}")
+            return []
+        return [f for f in os.listdir(directory) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif'))]
+
+    def populate_table(self, table, image_list):
+        """Fills a table with provided image names."""
+        table.setRowCount(len(image_list))
+        for row, image_name in enumerate(image_list):
+            table.setItem(row, 0, QTableWidgetItem(image_name))
+
+    def open_image_popup(self, row, column, directory, table):
         """Opens a popup to display the selected image."""
-        image_name = self.table_widget.item(row, column).text()
-        image_path = os.path.join(image_directory, image_name)
+        image_name = table.item(row, column).text()
+        image_path = os.path.join(directory, image_name)
 
-        # Show image in a popup
         self.image_popup = ImagePopup(image_path)
         self.image_popup.exec_()
-    
-    def populate_table(self, image_list):
-        """Fills the table with provided image names."""
-        self.table_widget.setRowCount(len(image_list))
-        for row, image_name in enumerate(image_list):
-            self.table_widget.setItem(row, 0, QTableWidgetItem(image_name))
 
     def filter_images(self):
-        """Filters images based on search query."""
+        """Filters images based on search query for both tables."""
         query = self.search_bar.text().lower()
-        filtered_images = [img for img in self.image_files if query in img.lower()]
-        self.populate_table(filtered_images)
+
+        filtered_tc_images = [img for img in self.tc_images if query in img.lower()]
+        filtered_ts_images = [img for img in self.ts_images if query in img.lower()]
+
+        self.populate_table(self.tc_table, filtered_tc_images)
+        self.populate_table(self.ts_table, filtered_ts_images)
 
 
 class ImageDropLabel(QLabel):

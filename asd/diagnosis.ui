@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>760</width>
-    <height>551</height>
+    <width>700</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -75,13 +75,13 @@
     <string>Information about the patient</string>
    </property>
   </widget>
-  <widget class="QTableWidget" name="table_widget">
+  <widget class="QTableWidget" name="tc_table">
    <property name="geometry">
     <rect>
-     <x>510</x>
+     <x>260</x>
      <y>110</y>
      <width>191</width>
-     <height>341</height>
+     <height>371</height>
     </rect>
    </property>
   </widget>
@@ -89,7 +89,7 @@
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>410</y>
+     <y>400</y>
      <width>121</width>
      <height>51</height>
     </rect>
@@ -109,6 +109,45 @@
    </property>
    <property name="text">
     <string>Diagnose</string>
+   </property>
+  </widget>
+  <widget class="QTableWidget" name="ts_table">
+   <property name="geometry">
+    <rect>
+     <x>470</x>
+     <y>110</y>
+     <width>191</width>
+     <height>371</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="tc_label">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>76</y>
+     <width>101</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TC Images</string>
+   </property>
+   <property name="scaledContents">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="ts_label">
+   <property name="geometry">
+    <rect>
+     <x>470</x>
+     <y>80</y>
+     <width>101</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TS Images</string>
    </property>
   </widget>
  </widget>

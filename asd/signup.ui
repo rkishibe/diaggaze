@@ -29,8 +29,8 @@
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>130</y>
+     <x>120</x>
+     <y>120</y>
      <width>91</width>
      <height>16</height>
     </rect>
@@ -42,28 +42,28 @@
   <widget class="QLineEdit" name="first_name_input">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>160</y>
-     <width>131</width>
-     <height>24</height>
+     <x>120</x>
+     <y>150</y>
+     <width>151</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLineEdit" name="last_name_input">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>230</y>
-     <width>131</width>
-     <height>24</height>
+     <x>120</x>
+     <y>220</y>
+     <width>151</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLabel" name="label_3">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>200</y>
+     <x>120</x>
+     <y>190</y>
      <width>91</width>
      <height>16</height>
     </rect>
@@ -75,18 +75,18 @@
   <widget class="QLineEdit" name="email_input">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>310</y>
-     <width>131</width>
-     <height>24</height>
+     <x>120</x>
+     <y>300</y>
+     <width>151</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>280</y>
+     <x>120</x>
+     <y>270</y>
      <width>111</width>
      <height>16</height>
     </rect>
@@ -99,7 +99,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>370</y>
+     <y>420</y>
      <width>101</width>
      <height>51</height>
     </rect>
@@ -112,7 +112,7 @@
    <property name="geometry">
     <rect>
      <x>190</x>
-     <y>370</y>
+     <y>420</y>
      <width>101</width>
      <height>51</height>
     </rect>
@@ -121,21 +121,11 @@
     <string>Back</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="password_input">
-   <property name="geometry">
-    <rect>
-     <x>290</x>
-     <y>160</y>
-     <width>131</width>
-     <height>24</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QLabel" name="label_5">
    <property name="geometry">
     <rect>
-     <x>290</x>
-     <y>130</y>
+     <x>380</x>
+     <y>120</y>
      <width>91</width>
      <height>16</height>
     </rect>
@@ -147,24 +137,34 @@
   <widget class="QLineEdit" name="username_input">
    <property name="geometry">
     <rect>
-     <x>300</x>
-     <y>290</y>
-     <width>131</width>
-     <height>24</height>
+     <x>380</x>
+     <y>230</y>
+     <width>151</width>
+     <height>31</height>
     </rect>
    </property>
   </widget>
   <widget class="QLabel" name="label_6">
    <property name="geometry">
     <rect>
-     <x>300</x>
-     <y>260</y>
+     <x>380</x>
+     <y>200</y>
      <width>91</width>
      <height>16</height>
     </rect>
    </property>
    <property name="text">
     <string>Username</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="password_input">
+   <property name="geometry">
+    <rect>
+     <x>380</x>
+     <y>150</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
    </property>
   </widget>
  </widget>
