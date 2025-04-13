@@ -16,6 +16,8 @@
   <property name="styleSheet">
    <string notr="true">QMainWindow {
     background-color: #F7F8FA;
+    background-image: url('icons/bg-2.png');
+    background-repeat: no-repeat;
 }
 
 QPushButton {
@@ -65,7 +67,8 @@ QGroupBox{
 }
 
 QListWidget {
-    background-color: #e3e5e8; /* Light background */
+    background-color:rgb(227, 229, 232); /* Light background */
+    opacity: 70%;
     font-size: 16px;
     border: none;
     padding: 10px;

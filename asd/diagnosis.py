@@ -1,8 +1,10 @@
 import os
+import cv2
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.uic import loadUi
+import numpy as np
 
 TC_IMAGE_DIRECTORY = "../../dataset/Images/TCImages"
 TS_IMAGE_DIRECTORY = "../../dataset/Images/TSImages"
@@ -44,6 +46,7 @@ class DiagnosisScreen(QWidget):
 
         self.search_bar.textChanged.connect(self.filter_images)
 
+        self.diagnosis_button.clicked.connect(self.show_camera)
         self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
         self.setup_table(self.tc_table, "TC Images")
@@ -102,6 +105,10 @@ class DiagnosisScreen(QWidget):
         self.populate_table(self.tc_table, filtered_tc_images)
         self.populate_table(self.ts_table, filtered_ts_images)
 
+    def show_camera(self):
+        self.camera_popup = CameraPopup()
+        self.camera_popup.exec_()
+
 
 class ImageDropLabel(QLabel):
     def __init__(self, model, height=200, width=150):
@@ -125,19 +132,85 @@ class ImageDropLabel(QLabel):
 
             # Process & Predict
             result = self.predict_image(file_path)
-            self.setText(f"Prediction: {result}")  # Display result
+            if result==0:
+                self.setText(f"Prediction: NON-ASD")  # Display result
+            elif result==1:
+                self.setText(f"Prediction: ASD")  # Display result
+            else:
+                self.setText(f"Diagnosis error!")  # Display result
 
     def predict_image(self, file_path):
         """ Convert image to tensor & run prediction """
         img = QImage(file_path)
-        #img = img.scaled(128, 128, Qt.KeepAspectRatio)  # Resize to match model input
-        # buffer = img.bits().asstring(img.width() * img.height() * 4)  # Convert to bytes
-        # arr = np.frombuffer(buffer, dtype=np.uint8).reshape(img.height(), img.width(), 4)  # Convert to NumPy array
+        img = img.scaled(224, 224, Qt.KeepAspectRatio, Qt.SmoothTransformation)  # Resize to keep aspect ratio
 
-        # # Preprocess: Convert to grayscale/RGB, normalize, reshape for the model
-        # arr = arr[..., :3] / 255.0  # Remove alpha channel, normalize
-        # arr = np.expand_dims(arr, axis=0)  # Add batch dimension
+        # Convert QImage to NumPy array
+        img = img.convertToFormat(QImage.Format_RGB888)
+        width, height = img.width(), img.height()
+        ptr = img.bits()
+        ptr.setsize(height * width * 3)
+        img_array = np.frombuffer(ptr, np.uint8).reshape((height, width, 3))
 
-        # # Predict using ML model
-        # prediction = self.model.predict(arr)
-        # return np.argmax(prediction)  # Return predicted class index
+        # Resize to 224x224 by padding if necessary
+        if img_array.shape[0] < 224 or img_array.shape[1] < 224:
+            # Create a 224x224 black background image
+            padded_img = np.zeros((224, 224, 3), dtype=np.uint8)
+            
+            # Calculate the padding offsets for the center
+            pad_top = (224 - img_array.shape[0]) // 2
+            pad_bottom = 224 - img_array.shape[0] - pad_top
+            pad_left = (224 - img_array.shape[1]) // 2
+            pad_right = 224 - img_array.shape[1] - pad_left
+
+            # Place the image in the center of the padding
+            padded_img[pad_top:pad_top + img_array.shape[0], pad_left:pad_left + img_array.shape[1]] = img_array
+            img_array = padded_img
+
+        # Normalize and reshape
+        #img_array = img_array.astype('float32') / 255.0
+        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+
+        # Predict using ML model
+        prediction = self.model.predict(img_array)
+        return np.argmax(prediction)  # Return predicted class index
+    
+class CameraPopup(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Live Camera")
+        self.setFixedSize(640, 480)
+
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.image_label)
+        self.setLayout(layout)
+
+        self.cap = cv2.VideoCapture(0)  # Open default camera (index 0)
+
+        if not self.cap.isOpened():
+            QMessageBox.critical(self, "Error", "Could not open the camera.")
+            self.close()
+            return
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(30)  # Refresh every 30 ms
+
+    def update_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        height, width, channel = frame.shape
+        bytes_per_line = 3 * width
+        qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        self.image_label.setPixmap(QPixmap.fromImage(qimg))
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        if self.cap.isOpened():
+            self.cap.release()
+        event.accept()

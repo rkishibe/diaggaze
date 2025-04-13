@@ -1,9 +1,11 @@
 import sys
+import os
 from PyQt5.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QStackedWidget, QWidget, QVBoxLayout
 from PyQt5.QtGui import QIcon, QPalette, QColor
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.uic import loadUi
 from pymongo import MongoClient
+import tensorflow as tf
 
 from signup import SignupScreen
 from welcome import WelcomeScreen
@@ -11,15 +13,21 @@ from login import LoginScreen
 from details import DetailsScreen
 from form import FormScreen
 from db_view import DatabaseScreen
-from diagnosis import DiagnosisScreen, ImageDropLabel
+from diagnosis import DiagnosisScreen, ImageDropLabel, CameraPopup
 from hover_effect import HoverEffectFilter
 from settings import SettingsScreen
 from patient_history import PatientHistoryScreen
 
 from utils import get_next_participant_id, cipher
+from loss_func import categorical_focal_loss
+from tensorflow.keras.optimizers import Adam
 
-#model = tf.keras.models.load_model("model.h5") #load ml model
-model=0
+#model = tf.keras.models.load_model("../efficient_94.h5", custom_objects={"categorical_focal_loss": categorical_focal_loss()}) #load ml model
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+model = tf.keras.models.load_model("../efficient_94.h5", compile=False)
+
 USERNAME=""
 
 class MenuScreen(QWidget):
@@ -34,6 +42,12 @@ class MenuScreen(QWidget):
 
         self.nav_list = QListWidget()
         self.nav_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.nav_list.setStyleSheet("""
+            QListWidget {
+                background-color: rgba(227, 229, 232, 178);  /* white with 70% opacity */
+                border: none;
+            }
+        """)
 
         self.menu_label = QListWidgetItem("Hello, User!")  
         self.menu_label.setFlags(Qt.ItemIsEnabled)
@@ -67,25 +81,13 @@ class MenuScreen(QWidget):
         self.add_consultation_button.clicked.connect(lambda: self.add_consultation())
         self.add_details.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
         card1.setObjectName("card")
-        card1.setStyleSheet("""
-            #card {
-                border: 1px solid grey;  /* Border size and color */
-                border-radius: 5px;  /* Optional: rounded corners */
-            }
-        """)
 
         card2 = self.create_dashboard_card(self.quick_diagnose, self.widget_2)
         self.dashboard_layout.addWidget(card2, 1 // 2, 1 % 2)
         self.cards.append(card2)
         card2.setObjectName("card")
-        card2.setStyleSheet("""
-            #card {
-                border: 1px solid grey;  /* Border size and color */
-                border-radius: 5px;  /* Optional: rounded corners */
-            }
-        """)
         layout_card2 = QVBoxLayout(card2)
-        #self.diagnose.clicked.connect() #popup with diagnosis?
+        self.diagnose.clicked.connect(self.show_camera) #popup with diagnosis?
         self.image_label = ImageDropLabel(model, height=140, width=225)
         self.image_label.setStyleSheet("border: 1px dashed #aaa; font-size: 12px; padding: 20px;")
         
@@ -96,12 +98,6 @@ class MenuScreen(QWidget):
         self.dashboard_layout.addWidget(card3, 2 // 2, 2 % 2)
         self.cards.append(card3)
         card3.setObjectName("card")
-        card3.setStyleSheet("""
-            #card {
-                border: 1px solid grey;  /* Border size and color */
-                border-radius: 5px;  /* Optional: rounded corners */
-            }
-        """)
         self.load_consultations(layout=main_layout, filter_today=True)
         #self.patient_history.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(8)) #patient history page
         self.patient_history.clicked.connect(self.show_patient_history)
@@ -109,13 +105,21 @@ class MenuScreen(QWidget):
         card4 = self.create_dashboard_card(self.patient_details, self.widget_4)
         self.dashboard_layout.addWidget(card4, 3 // 2, 3 % 2)
         card4.setObjectName("card")
-        card4.setStyleSheet("""
-            #card {
-                border: 1px solid grey;  /* Border size and color */
-                border-radius: 5px;  /* Optional: rounded corners */
-            }
-        """)
         self.cards.append(card4)
+
+        card_style = """
+            #card {
+                background-color: rgba(255, 255, 255, 75);
+                border: 1px solid grey;
+                border-radius: 5px;
+            }
+        """
+
+        card1.setStyleSheet(card_style)
+        card2.setStyleSheet(card_style)
+        card3.setStyleSheet(card_style)
+        card4.setStyleSheet(card_style)
+
 
         self.search_button.clicked.connect(lambda: self.search_patient_by_id(patient_id=self.id_search.value()))
 
@@ -294,12 +298,18 @@ class MenuScreen(QWidget):
             print("MongoDB connection closed.")
 
         self.stacked_widget.setCurrentIndex(0)  # Redirect to login screen
+    
+    def show_camera(self):
+        self.camera_popup = CameraPopup()
+        self.camera_popup.exec_()
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Welcome")
+        self.setWindowIcon(QIcon("icons/app_logo.ico"))
+        #self.setWindowFlags(Qt.FramelessWindowHint)
         loadUi('app.ui', self)
 
         self.stacked_widget = QStackedWidget()
@@ -342,10 +352,13 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(1)  # Switch to menu screen
 
 
+
 def main():
     app = QApplication(sys.argv)
 
-    # Set application-wide palette
+    icon = QIcon("icons/app_logo.ico")
+    app.setWindowIcon(icon)
+
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor("#4A90E2"))  # Light blue
     palette.setColor(QPalette.Button, QColor("#50C8C6"))
