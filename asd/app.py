@@ -87,7 +87,10 @@ class MenuScreen(QWidget):
         self.cards.append(card2)
         card2.setObjectName("card")
         layout_card2 = QVBoxLayout(card2)
-        self.diagnose.clicked.connect(self.show_camera) #popup with diagnosis?
+
+        self.label = ImageDropLabel(model)
+
+        self.diagnose.clicked.connect(self.label.gaze_tracker) 
         self.image_label = ImageDropLabel(model, height=140, width=225)
         self.image_label.setStyleSheet("border: 1px dashed #aaa; font-size: 12px; padding: 20px;")
         

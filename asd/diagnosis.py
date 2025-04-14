@@ -1,10 +1,22 @@
 import os
 import cv2
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.uic import loadUi
 import numpy as np
+import cv2
+import time
+import math
+import datetime
+import pyautogui
+import matplotlib.pyplot as plt
+from eyeGestures.utils import VideoCapture
+from eyeGestures import EyeGestures_v3
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtCore import QUrl
 
 TC_IMAGE_DIRECTORY = "../../dataset/Images/TCImages"
 TS_IMAGE_DIRECTORY = "../../dataset/Images/TSImages"
@@ -139,40 +151,153 @@ class ImageDropLabel(QLabel):
             else:
                 self.setText(f"Diagnosis error!")  # Display result
 
-    def predict_image(self, file_path):
-        """ Convert image to tensor & run prediction """
-        img = QImage(file_path)
-        img = img.scaled(224, 224, Qt.KeepAspectRatio, Qt.SmoothTransformation)  # Resize to keep aspect ratio
+    def predict_image(self, img):
+        """ run prediction """
 
-        # Convert QImage to NumPy array
-        img = img.convertToFormat(QImage.Format_RGB888)
-        width, height = img.width(), img.height()
-        ptr = img.bits()
-        ptr.setsize(height * width * 3)
-        img_array = np.frombuffer(ptr, np.uint8).reshape((height, width, 3))
-
-        # Resize to 224x224 by padding if necessary
-        if img_array.shape[0] < 224 or img_array.shape[1] < 224:
-            # Create a 224x224 black background image
-            padded_img = np.zeros((224, 224, 3), dtype=np.uint8)
-            
-            # Calculate the padding offsets for the center
-            pad_top = (224 - img_array.shape[0]) // 2
-            pad_bottom = 224 - img_array.shape[0] - pad_top
-            pad_left = (224 - img_array.shape[1]) // 2
-            pad_right = 224 - img_array.shape[1] - pad_left
-
-            # Place the image in the center of the padding
-            padded_img[pad_top:pad_top + img_array.shape[0], pad_left:pad_left + img_array.shape[1]] = img_array
-            img_array = padded_img
-
-        # Normalize and reshape
-        #img_array = img_array.astype('float32') / 255.0
-        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-
-        # Predict using ML model
-        prediction = self.model.predict(img_array)
+        prediction = self.model.predict(img)
         return np.argmax(prediction)  # Return predicted class index
+    
+    def average_laplacian(self,image):
+        """Applies an average filter followed by a Laplacian filter."""
+        kernel_size = (3, 3)  # Define kernel size for averaging
+        average_filtered = cv2.blur(image, kernel_size)
+
+        # Convert image to float64 for Laplacian
+        image = image.astype(np.float64)  # Use np.float64 for the Laplacian filter
+
+        # Apply the Laplacian filter
+        laplacian_filtered = cv2.Laplacian(image, cv2.CV_64F)
+
+        # Enhance the image
+        enhanced_image = laplacian_filtered - average_filtered
+
+        # Convert back to uint8 (clip to valid range)
+        enhanced_image = np.clip(enhanced_image, 0, 255).astype(np.uint8)
+
+        return enhanced_image
+
+    def preprocess_image(self,img_array, color, target_size):
+        """
+        Preprocess a batch of images:
+        - Convert each image in the batch to grayscale.
+        - Resize each image to the target size.
+        Args:
+            img_array (np.array): Input batch of images (batch_size, H, W, C).
+            target_size (tuple): Desired target size (width, height).
+        Returns:
+            np.array: Preprocessed grayscale images of target size (batch_size, H', W').
+        """
+        if img_array is None or img_array.size == 0:
+            raise ValueError("Input image array is empty or None.")
+
+        # Ensure the input image has the correct shape (single-channel grayscale)
+        # if img_array.ndim == 3 and img_array.shape[-1] != 1:
+        #     img_array = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)  # Convert to grayscale if not already
+
+        # Apply thresholding to create a binary image (make sure it's uint8)
+        laplacian_img = cv2.threshold(img_array, 4, 255, cv2.THRESH_BINARY)[1]
+        
+        # Convert to uint8 explicitly (ensures the correct data type for processing)
+        laplacian_img = np.uint8(laplacian_img)
+
+        if color is False:
+            # Apply histogram equalization (this requires an 8-bit single-channel image)
+            grayscale_img = cv2.equalizeHist(laplacian_img)
+
+            # Resize the image to the target size
+            resized_img = cv2.resize(grayscale_img, target_size, interpolation=cv2.INTER_AREA)
+
+            # Ensure the image has a single channel
+            resized_img = np.expand_dims(resized_img, axis=-1)
+        else:
+            # If color processing is required, just resize the laplacian image
+            resized_img = cv2.resize(laplacian_img, target_size, interpolation=cv2.INTER_AREA)
+
+        return resized_img
+
+    def gaze_tracker(self):
+        self.popup = VideoPopup("asdd.mp4")
+        self.popup.videoFinished.connect(self.finish_experiment)
+        
+        # Setup stuff
+        self.gestures = EyeGestures_v3()
+        self.cap = VideoCapture(0)
+        calibrate = True
+        screen_width, screen_height = pyautogui.size()
+        
+        x = np.arange(0, 1.1, 0.2)
+        y = np.arange(0, 1.1, 0.2)
+        xx, yy = np.meshgrid(x, y)
+        calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
+        np.random.shuffle(calibration_map)
+        
+        self.gestures.uploadCalibrationMap(calibration_map, context="my_context")
+        self.gestures.setFixation(1.0)
+
+        self.scanpath_img = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
+        self.prev_point = None
+        self.distances = []
+        self.start_time = time.time()
+        self.duration = 180
+
+        self.popup.show()
+
+        # Start frame processing loop in a QTimer (instead of while loop)
+        self.frame_timer = QTimer()
+        self.frame_timer.timeout.connect(lambda: self.process_frame(screen_width, screen_height, calibrate))
+        self.frame_timer.start(180)
+
+    def process_frame(self, screen_width, screen_height, calibrate):
+        if time.time() - self.start_time > self.duration:
+            self.frame_timer.stop()
+            return
+
+        ret, frame = self.cap.read()
+        if not ret or frame is None:
+            QMessageBox.warning(self, "Tracking Error", "Face or eyes not detected. Please try again.")
+            self.frame_timer.stop()
+            self.cap.close()
+            self.gaze_tracker()
+            return
+
+        try:
+            event, cevent = self.gestures.step(frame, calibrate, screen_width, screen_height, context="my_context")
+            if event:
+                if int(event.point[0]) != 0 and int(event.point[1]) != 0:
+                    current_point = (int(event.point[0]), int(event.point[1]))
+                    if self.prev_point is not None:
+                        dist = math.dist(self.prev_point, current_point)
+                        self.distances.append(dist)
+                        cv2.line(self.scanpath_img, self.prev_point, current_point, color=(255, 255, 255), thickness=2)
+                    self.prev_point = current_point
+        except Exception as e:
+            QMessageBox.warning(self, "Tracking Error", f"Error: {e}\nRestarting...")
+            self.frame_timer.stop()
+            self.cap.close()
+            self.gaze_tracker()
+
+    def finish_experiment(self):
+        self.frame_timer.stop()
+        self.popup.close()
+        self.cap.close()
+
+        processed_image = self.preprocess_image(self.scanpath_img, color=True, target_size=(224, 224))
+        processed_image = np.expand_dims(processed_image, axis=0)
+
+        if processed_image is None or processed_image.size == 0:
+            QMessageBox.critical(self, "Error", "Processed image is empty.")
+            return
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"scanpath_{timestamp}.png"
+        image_to_save = np.squeeze(processed_image, axis=0)
+        cv2.imwrite(filename, image_to_save)
+
+        result = self.predict_image(processed_image)
+        resultTxt = "Non-ASD" if result == 0 else "ASD" if result == 1 else "Error"
+        QMessageBox.information(self, "Diagnosis", resultTxt)
+
+
     
 class CameraPopup(QDialog):
     def __init__(self):
@@ -214,3 +339,29 @@ class CameraPopup(QDialog):
         if self.cap.isOpened():
             self.cap.release()
         event.accept()
+
+from PyQt5.QtCore import pyqtSignal
+
+class VideoPopup(QDialog):
+    videoFinished = pyqtSignal()
+
+    def __init__(self, video_path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Video Player")
+        self.setMinimumSize(640, 480)
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.video_widget = QVideoWidget()
+        layout.addWidget(self.video_widget)
+
+        self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
+        self.media_player.mediaStatusChanged.connect(self.check_video_status)
+        self.media_player.play()
+
+    def check_video_status(self, status):
+        if status == QMediaPlayer.EndOfMedia:
+            self.videoFinished.emit()
