@@ -46,7 +46,11 @@ class DiagnosisScreen(QWidget):
     def __init__(self, stacked_widget, model):
         super().__init__()
         self.stacked_widget = stacked_widget
+        self.model = model  # ✅ Assign model before using it
+
         loadUi('diagnosis.ui', self)
+
+        self.image_drop_label = ImageDropLabel(model=self.model)
 
         self.diagnosis_label.setAlignment(Qt.AlignCenter)
         self.diagnosis_label.setStyleSheet("font-size: 20px; font-weight: bold;")
@@ -56,9 +60,10 @@ class DiagnosisScreen(QWidget):
 
         main_layout = QVBoxLayout(self)
 
-        self.search_bar.textChanged.connect(self.filter_images)
+        #main_layout.addWidget(self.image_drop_label)  # Optional: add to UI if needed
 
-        self.diagnosis_button.clicked.connect(self.show_camera)
+        self.search_bar.textChanged.connect(self.filter_images)
+        self.diagnosis_button.clicked.connect(self.image_drop_label.gaze_tracker)
         self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
 
         self.setup_table(self.tc_table, "TC Images")
@@ -70,6 +75,7 @@ class DiagnosisScreen(QWidget):
         self.setLayout(main_layout)
 
         self.load_images()
+
 
     def setup_table(self, table, title):
         """Configures the table settings."""
@@ -218,6 +224,7 @@ class ImageDropLabel(QLabel):
     def gaze_tracker(self):
         self.popup = VideoPopup("asdd.mp4")
         self.popup.videoFinished.connect(self.finish_experiment)
+        self.popup.finished.connect(self.cleanup_camera)
         
         # Setup stuff
         self.gestures = EyeGestures_v3()
@@ -296,6 +303,12 @@ class ImageDropLabel(QLabel):
         result = self.predict_image(processed_image)
         resultTxt = "Non-ASD" if result == 0 else "ASD" if result == 1 else "Error"
         QMessageBox.information(self, "Diagnosis", resultTxt)
+
+    def cleanup_camera(self):
+        if hasattr(self, 'frame_timer') and self.frame_timer.isActive():
+            self.frame_timer.stop()
+        
+        self.cap.close()
 
 
     

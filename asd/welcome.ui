@@ -55,8 +55,8 @@
     <property name="geometry">
      <rect>
       <x>40</x>
-      <y>40</y>
-      <width>221</width>
+      <y>50</y>
+      <width>231</width>
       <height>61</height>
      </rect>
     </property>
@@ -64,7 +64,7 @@
      <string notr="true">font-size: 20px; font-weight: bold;</string>
     </property>
     <property name="text">
-     <string>Welcome to the app!</string>
+     <string>Welcome to DiagGaze!</string>
     </property>
    </widget>
   </widget>

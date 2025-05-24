@@ -1,10 +1,11 @@
 from pymongo import MongoClient
-from PyQt5.QtWidgets import QWidget, QMessageBox, QButtonGroup
+from PyQt5.QtWidgets import QWidget, QMessageBox, QButtonGroup, QFileDialog
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.uic import loadUi
 import uuid
 import re
-
+from gridfs import GridFS
+import os
 from utils import get_next_participant_id, cipher
 
 class FormScreen(QWidget):
@@ -30,6 +31,10 @@ class FormScreen(QWidget):
 
         self.submit_button.clicked.connect(self.submit_form)
         self.back_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+
+        self.upload_button.clicked.connect(self.upload_pdf_file)
+        self.selected_pdf_path = None  # Store the selected file path
+
 
     def validate_name(self, name):
         """Ensure name contains only letters and spaces."""
@@ -89,7 +94,9 @@ class FormScreen(QWidget):
         encrypted_gender = cipher.encrypt(gender.encode()).decode()
         encrypted_diagnosis = cipher.encrypt(diagnosis.encode()).decode()
         encrypted_phone = cipher.encrypt(phone.encode()).decode()
-        
+        encrypted_age = cipher.encrypt(str(age).encode()).decode()
+        encrypted_cars_score = cipher.encrypt(str(cars_score).encode()).decode()
+        encrypted_date = cipher.encrypt(date.encode()).decode()
 
         consultation_form_data = {
             "Consultation ID": consultation_id,
@@ -104,11 +111,11 @@ class FormScreen(QWidget):
         patient_form_data = {
             "ParticipantID": participant_id,
             "Name": encrypted_name,
-            "Age": age,
+            "Age": encrypted_age,
             "Gender": encrypted_gender,
-            "Date of Presentation": date,
+            "Date of Presentation": encrypted_date,
             "Class": encrypted_diagnosis,
-            "CARS Score": cars_score,
+            "CARS Score": encrypted_cars_score,
             "Phone": encrypted_phone
         }
 
@@ -135,5 +142,38 @@ class FormScreen(QWidget):
             self.asess_Radiobutton.setChecked(False)
             self.treatment_input.clear()
 
+            if self.selected_pdf_path:
+                self.upload_encrypted_pdf(
+                    self.selected_pdf_path,
+                    f"{participant_id}_document.pdf",
+                    participant_id
+                )
+
+
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"An error occurred: {str(e)}")
+
+    def upload_encrypted_pdf(self, file_path, filename, patient_id):
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["Patients"]
+        fs = GridFS(db)
+
+        with open(file_path, "rb") as f:
+            data = f.read()
+            encrypted_data = cipher.encrypt(data)  # Using your Fernet cipher
+
+        fs.put(
+            encrypted_data,
+            filename=filename,
+            metadata={"patient_id": patient_id, "encrypted": True}
+        )
+
+    def upload_pdf_file(self):
+        file_dialog = QFileDialog()
+        file_dialog.setNameFilter("PDF files (*.pdf)")
+        if file_dialog.exec_():
+            selected_files = file_dialog.selectedFiles()
+            if selected_files:
+                self.selected_pdf_path = selected_files[0]
+                QMessageBox.information(self, "PDF Selected", f"Selected: {os.path.basename(self.selected_pdf_path)}")
+

@@ -19,10 +19,6 @@ from settings import SettingsScreen
 from patient_history import PatientHistoryScreen
 
 from utils import get_next_participant_id, cipher
-from loss_func import categorical_focal_loss
-from tensorflow.keras.optimizers import Adam
-
-#model = tf.keras.models.load_model("../efficient_94.h5", custom_objects={"categorical_focal_loss": categorical_focal_loss()}) #load ml model
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -103,7 +99,7 @@ class MenuScreen(QWidget):
         card3.setObjectName("card")
         self.load_consultations(layout=main_layout, filter_today=True)
         #self.patient_history.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(8)) #patient history page
-        self.patient_history.clicked.connect(self.show_patient_history)
+        self.patient_history.clicked.connect(lambda: self.show_patient_history(patient_id=None))
 
         card4 = self.create_dashboard_card(self.patient_details, self.widget_4)
         self.dashboard_layout.addWidget(card4, 3 // 2, 3 % 2)
@@ -123,8 +119,11 @@ class MenuScreen(QWidget):
         card3.setStyleSheet(card_style)
         card4.setStyleSheet(card_style)
 
+        #patient_id=self.id_search.value()
 
-        self.search_button.clicked.connect(lambda: self.search_patient_by_id(patient_id=self.id_search.value()))
+        self.search_button.clicked.connect(lambda: self.search_patient_by_id(self.id_search.value()))
+        self.view_details.clicked.connect(lambda: self.show_patient_history(self.id_search.value()))
+
 
         main_layout.addWidget(self.nav_list, 1)  # Sidebar takes 1/4 of space
         main_layout.addLayout(self.dashboard_layout, 3)  # Dashboard takes 3/4
@@ -191,7 +190,6 @@ class MenuScreen(QWidget):
 
         except Exception as e:
             print(f"Error loading consultations: {str(e)}")
-
 
     def search_patient_by_id(self, patient_id):
         client = MongoClient("mongodb://localhost:27017/")  
@@ -281,8 +279,9 @@ class MenuScreen(QWidget):
         else:
             return 0
 
-    def show_patient_history(self):
-        patient_id = self.get_selected_patient_id()
+    def show_patient_history(self, patient_id):
+        if patient_id is None:
+            patient_id = self.get_selected_patient_id()
 
         #patient_id = self.load_consultations(filter_today=True)
 
