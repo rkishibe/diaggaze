@@ -1,6 +1,6 @@
 import os
 import cv2
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidgetItem, QLabel, QMessageBox, QDialog, QApplication, QDesktopWidget
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.uic import loadUi
@@ -12,8 +12,7 @@ import datetime
 import pyautogui
 import matplotlib.pyplot as plt
 from eyeGestures.utils import VideoCapture
-from eyeGestures import EyeGestures_v3
-from PyQt5.QtWidgets import QDialog
+from eyeGestures import EyeGestures_v3, EyeGestures_v2
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import QUrl
@@ -46,11 +45,11 @@ class DiagnosisScreen(QWidget):
     def __init__(self, stacked_widget, model):
         super().__init__()
         self.stacked_widget = stacked_widget
-        self.model = model  # ✅ Assign model before using it
+        self.model = model  
 
         loadUi('diagnosis.ui', self)
 
-        self.image_drop_label = ImageDropLabel(model=self.model)
+        self.image_drop_label = ImageDropLabel(model=self.model, parent_screen=self)
 
         self.diagnosis_label.setAlignment(Qt.AlignCenter)
         self.diagnosis_label.setStyleSheet("font-size: 20px; font-weight: bold;")
@@ -129,7 +128,7 @@ class DiagnosisScreen(QWidget):
 
 
 class ImageDropLabel(QLabel):
-    def __init__(self, model, height=200, width=150):
+    def __init__(self, model, parent_screen=None,height=200, width=150):
         super().__init__()
         self.setText("Drag and Drop an Image Here")
         self.setAlignment(Qt.AlignCenter)
@@ -138,6 +137,7 @@ class ImageDropLabel(QLabel):
         self.setStyleSheet("border: 1px dashed #aaa; font-size: 16px; padding: 20px;")
         self.setAcceptDrops(True)
         self.model = model  # Load the ML model
+        self.parent_screen = parent_screen
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -212,11 +212,13 @@ class ImageDropLabel(QLabel):
 
             # Resize the image to the target size
             resized_img = cv2.resize(grayscale_img, target_size, interpolation=cv2.INTER_AREA)
+            #resized_img = grayscale_img
 
             # Ensure the image has a single channel
             resized_img = np.expand_dims(resized_img, axis=-1)
         else:
             # If color processing is required, just resize the laplacian image
+            #resized_img = laplacian_img
             resized_img = cv2.resize(laplacian_img, target_size, interpolation=cv2.INTER_AREA)
 
         return resized_img
@@ -225,19 +227,23 @@ class ImageDropLabel(QLabel):
         self.popup = VideoPopup("asdd.mp4")
         self.popup.videoFinished.connect(self.finish_experiment)
         self.popup.finished.connect(self.cleanup_camera)
-        
-        # Setup stuff
-        self.gestures = EyeGestures_v3()
+
+        diagnosis_screen = self.parentWidget().parentWidget()  # Traverse up to DiagnosisScreen
+        if hasattr(diagnosis_screen, 'show_camera'):
+            diagnosis_screen.show_camera()
+
+        self.gestures = EyeGestures_v2()
         self.cap = VideoCapture(0)
         calibrate = True
         screen_width, screen_height = pyautogui.size()
-        
-        x = np.arange(0, 1.1, 0.2)
-        y = np.arange(0, 1.1, 0.2)
+
+        # Improved calibration: avoid corners
+        x = np.linspace(0.2, 0.8, 4)
+        y = np.linspace(0.2, 0.8, 4)
         xx, yy = np.meshgrid(x, y)
         calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
         np.random.shuffle(calibration_map)
-        
+
         self.gestures.uploadCalibrationMap(calibration_map, context="my_context")
         self.gestures.setFixation(1.0)
 
@@ -245,14 +251,28 @@ class ImageDropLabel(QLabel):
         self.prev_point = None
         self.distances = []
         self.start_time = time.time()
-        self.duration = 180
-
+        self.duration = 100
+        self.kalman = self.init_kalman_filter()
+        
         self.popup.show()
 
-        # Start frame processing loop in a QTimer (instead of while loop)
         self.frame_timer = QTimer()
         self.frame_timer.timeout.connect(lambda: self.process_frame(screen_width, screen_height, calibrate))
-        self.frame_timer.start(180)
+        self.frame_timer.start(100)  # 10 FPS
+
+
+    def init_kalman_filter(self):
+        kalman = cv2.KalmanFilter(4, 2)
+        kalman.measurementMatrix = np.array([[1, 0, 0, 0],
+                                            [0, 1, 0, 0]], np.float32)
+        kalman.transitionMatrix = np.array([[1, 0, 1, 0],
+                                            [0, 1, 0, 1],
+                                            [0, 0, 1, 0],
+                                            [0, 0, 0, 1]], np.float32)
+        kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 0.03
+        kalman.statePre = np.zeros((4, 1), dtype=np.float32)
+        return kalman
+
 
     def process_frame(self, screen_width, screen_height, calibrate):
         if time.time() - self.start_time > self.duration:
@@ -272,16 +292,33 @@ class ImageDropLabel(QLabel):
             if event:
                 if int(event.point[0]) != 0 and int(event.point[1]) != 0:
                     current_point = (int(event.point[0]), int(event.point[1]))
+
+                    # Kalman filter smoothing
+                    measurement = np.array([[np.float32(current_point[0])],
+                                            [np.float32(current_point[1])]])
+                    self.kalman.correct(measurement)
+                    predicted = self.kalman.predict()
+                    smoothed_point = (int(predicted[0]), int(predicted[1]))
+
+                    # Only draw line if movement is stable and not too fast (fixation threshold)
                     if self.prev_point is not None:
-                        dist = math.dist(self.prev_point, current_point)
-                        self.distances.append(dist)
-                        cv2.line(self.scanpath_img, self.prev_point, current_point, color=(255, 255, 255), thickness=2)
-                    self.prev_point = current_point
+                        dist = math.dist(self.prev_point, smoothed_point)
+                        velocity = dist / 0.1  # Approximate velocity (distance per 100ms)
+                        #print(f"Distance: {dist:.2f}, Velocity: {velocity:.2f}")
+                        if velocity < 600:  # Only draw for fixation-like movement
+                            self.distances.append(dist)
+                            cv2.line(self.scanpath_img, self.prev_point, smoothed_point,
+                                    color=(255, 255, 255), thickness=2)
+
+                    self.prev_point = smoothed_point
+
         except Exception as e:
             QMessageBox.warning(self, "Tracking Error", f"Error: {e}\nRestarting...")
             self.frame_timer.stop()
             self.cap.close()
             self.gaze_tracker()
+
+
 
     def finish_experiment(self):
         self.frame_timer.stop()
@@ -309,8 +346,6 @@ class ImageDropLabel(QLabel):
             self.frame_timer.stop()
         
         self.cap.close()
-
-
     
 class CameraPopup(QDialog):
     def __init__(self):
@@ -325,6 +360,21 @@ class CameraPopup(QDialog):
         layout.addWidget(self.image_label)
         self.setLayout(layout)
 
+        # Detect available screens
+        app = QApplication.instance()
+        screens = app.screens()
+        print(screens)
+
+        if len(screens) > 1:
+            second_screen = screens[1]
+            geometry = second_screen.geometry()
+            self.move(geometry.x(), geometry.y())
+            #self.showFullScreen()
+        else:
+            # Center on primary screen if only one
+            screen = QDesktopWidget().screenGeometry()
+            self.move((screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2)
+
         self.cap = cv2.VideoCapture(0)  # Open default camera (index 0)
 
         if not self.cap.isOpened():
@@ -336,22 +386,6 @@ class CameraPopup(QDialog):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(30)  # Refresh every 30 ms
 
-    def update_frame(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            return
-
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        height, width, channel = frame.shape
-        bytes_per_line = 3 * width
-        qimg = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-        self.image_label.setPixmap(QPixmap.fromImage(qimg))
-
-    def closeEvent(self, event):
-        self.timer.stop()
-        if self.cap.isOpened():
-            self.cap.release()
-        event.accept()
 
 from PyQt5.QtCore import pyqtSignal
 
@@ -373,6 +407,9 @@ class VideoPopup(QDialog):
         self.media_player.setVideoOutput(self.video_widget)
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
         self.media_player.mediaStatusChanged.connect(self.check_video_status)
+
+        self.showFullScreen()
+
         self.media_player.play()
 
     def check_video_status(self, status):

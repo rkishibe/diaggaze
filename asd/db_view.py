@@ -56,7 +56,7 @@ class DatabaseScreen(QWidget):
                     value = doc.get(field, "")
 
                     # Decrypt encrypted fields (keep numeric and date fields unchanged)
-                    if field in ["Name", "Gender", "Class", "Phone"] and isinstance(value, str) and value:
+                    if field in ["Name", "Gender", "Class", "Phone", "Age", "CARS Score", "Date of Presentation"] and isinstance(value, str) and value:
                         try:
                             value = cipher.decrypt(value.encode()).decode().strip()
                         except:
