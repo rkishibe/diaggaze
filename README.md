@@ -1,4 +1,4 @@
-# HeartApp: Sistem de monitorizare și asistență medicală
+# DiagGaze: Diagnosticarea autismului pe baza mișcărilor oculare 
 
 ## Adresa repository
 
@@ -43,20 +43,17 @@ cd diaggaze/autism/asd
 
     SECRET_KEY – poate fi generat cu:
 ```bash
-	openssl rand -hex 32 > secret.key
-	set SECRET_KEY=$(< secret.key)
+openssl rand -hex 32 > secret.key
+set SECRET_KEY=$(< secret.key)
 ```
 ---
 
 ## Pași de instalare și lansare a aplicației
 
 1. **Precondiții**
-
-   * PostgreSQL rulează și are creată baza de date `heart_app`
    * Fișierul "secret.key" este plasat în directorul rădăcină
 
 2. **Lansarea aplicației**
 
    ```bash
 	python app.py
-```
