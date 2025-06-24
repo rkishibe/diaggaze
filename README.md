@@ -39,7 +39,7 @@ cd diaggaze/autism/asd
 
 4. Configurează variabilele de mediu, fie într-un .env, fie exportate manual:
 
-    MONGO_URI – exemplu: mongodb://localhost:27017/heart_app
+    MONGO_URI – exemplu: mongodb://localhost:27017/
 
     SECRET_KEY – poate fi generat cu:
 ```bash
